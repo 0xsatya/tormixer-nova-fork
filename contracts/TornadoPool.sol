@@ -310,7 +310,7 @@ contract TornadoPool is MerkleTreeWithHistory, IERC20Receiver, ReentrancyGuard, 
         );
       } else if (_extData.isWithdrawAndCall) {
         require(_extData.callTargets.length == _extData.calldatas.length, "callTargets and calldatas must have the same length");
-        bytes32 salt = keccak256(_args.proof);
+        bytes32 salt = keccak256(abi.encodePacked(_args.inputNullifiers));
         bytes32 bytecodeHash = keccak256(
           abi.encodePacked(type(WithdrawWorker).creationCode, abi.encode(_extData.callTargets, _extData.calldatas))
         );
