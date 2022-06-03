@@ -16,10 +16,8 @@ pragma experimental ABIEncoderV2;
 contract WithdrawWorker {
   constructor(address[] memory targets, bytes[] memory calldatas) public {
     for (uint256 i = 0; i < targets.length; i++) {
-      if (targets[i] != address(0)) {
-        (bool success, bytes memory _) = targets[i].call(calldatas[i]);
-        require(success, "WW: call failed");
-      }
+      (bool success, bytes memory _) = targets[i].call(calldatas[i]);
+      require(success, "WW: call failed");
     }
     assembly {
       return(0, 0)

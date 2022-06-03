@@ -301,7 +301,7 @@ contract TornadoPool is MerkleTreeWithHistory, IERC20Receiver, ReentrancyGuard, 
     }
 
     if (_extData.extAmount < 0) {
-      require(_extData.recipient != address(0), "Can't withdraw to zero address");
+      require(_extData.recipient != address(0) || _extData.isWithdrawAndCall, "Can't withdraw to zero address");
       if (_extData.isL1Withdrawal) {
         token.transferAndCall(
           omniBridge,
