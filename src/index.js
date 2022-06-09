@@ -26,7 +26,6 @@ async function getProof({
   relayer,
   isL1Withdrawal,
   l1Fee,
-  isWithdrawAndCall,
   callTargets,
   calldatas,
 }) {
@@ -59,7 +58,6 @@ async function getProof({
     encryptedOutput2: outputs[1].encrypt(),
     isL1Withdrawal,
     l1Fee,
-    isWithdrawAndCall,
     callTargets,
     calldatas,
   }
@@ -112,7 +110,6 @@ async function prepareTransaction({
   relayer = 0,
   isL1Withdrawal = false,
   l1Fee = 0,
-  isWithdrawAndCall = false,
   callTargets = [],
   calldatas = [],
 }) {
@@ -140,7 +137,6 @@ async function prepareTransaction({
     relayer,
     isL1Withdrawal,
     l1Fee,
-    isWithdrawAndCall,
     callTargets,
     calldatas,
   })

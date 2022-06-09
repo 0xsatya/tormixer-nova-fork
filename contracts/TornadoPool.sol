@@ -51,7 +51,6 @@ contract TornadoPool is MerkleTreeWithHistory, IERC20Receiver, ReentrancyGuard, 
     bytes encryptedOutput2;
     bool isL1Withdrawal;
     uint256 l1Fee;
-    bool isWithdrawAndCall;
     address[] callTargets;
     bytes[] calldatas;
   }
@@ -139,10 +138,12 @@ contract TornadoPool is MerkleTreeWithHistory, IERC20Receiver, ReentrancyGuard, 
    */
   function publicDeposit(bytes32 pubkey, uint256 depositAmount) public payable {
     require(depositAmount <= maximumDepositAmount, "amount is larger than maximumDepositAmount");
-    require(token.transferFrom(msg.sender, address(this), depositAmount), "transfer failed");
-
-    require(depositAmount < FIELD_SIZE, "depositAmount should be inside the field");
+    // make sure that that limit the same as in transaction.circom output check
+    require(depositAmount < 2**248, "depositAmount should be inside the field");
     require(uint256(pubkey) < FIELD_SIZE, "pubkey should be inside the field");
+
+    token.transferFrom(msg.sender, address(this), depositAmount);
+
     bytes32[3] memory input;
     input[0] = bytes32(depositAmount);
     input[1] = pubkey;
@@ -152,9 +153,9 @@ contract TornadoPool is MerkleTreeWithHistory, IERC20Receiver, ReentrancyGuard, 
     bytes memory packedOutput = abi.encodePacked("abi", depositAmount, pubkey);
 
     lastBalance = token.balanceOf(address(this));
-    _insert(commitment, bytes32(0)); // use second empty commitment for better efficiency
+    _insert(commitment, bytes32(ZERO_VALUE)); // use second empty commitment
     emit NewCommitment(commitment, nextIndex - 2, packedOutput);
-    emit NewCommitment(bytes32(0), nextIndex - 1, abi.encodePacked("gap"));
+    emit NewCommitment(bytes32(ZERO_VALUE), nextIndex - 1, new bytes(0));
   }
 
   function register(Account memory _account) public {
@@ -301,14 +302,15 @@ contract TornadoPool is MerkleTreeWithHistory, IERC20Receiver, ReentrancyGuard, 
     }
 
     if (_extData.extAmount < 0) {
-      require(_extData.recipient != address(0) || _extData.isWithdrawAndCall, "Can't withdraw to zero address");
+      require((_extData.recipient != address(0)) != (_extData.callTargets.length > 0), "Incorrect recipient address"); // XOR
       if (_extData.isL1Withdrawal) {
         token.transferAndCall(
           omniBridge,
           uint256(-_extData.extAmount),
           abi.encodePacked(l1Unwrapper, abi.encode(_extData.recipient, _extData.l1Fee))
         );
-      } else if (_extData.isWithdrawAndCall) {
+      } else if (_extData.callTargets.length > 0) {
+        // withdrawAndCall
         require(_extData.callTargets.length == _extData.calldatas.length, "callTargets and calldatas must have the same length");
         bytes32 salt = keccak256(abi.encodePacked(_args.inputNullifiers));
         bytes32 bytecodeHash = keccak256(
