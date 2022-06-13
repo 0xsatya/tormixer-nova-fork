@@ -20,7 +20,6 @@ import { CrossChainGuard } from "./bridge/CrossChainGuard.sol";
 import { IVerifier } from "./interfaces/IVerifier.sol";
 import { IHasher3 } from "./interfaces/IHasher3.sol";
 import "./MerkleTreeWithHistory.sol";
-import "./WithdrawalWorker.sol";
 
 /** @dev This contract(pool) allows deposit of an arbitrary amount to it, shielded transfer to another registered user inside the pool
  * and withdrawal from the pool. Project utilizes UTXO model to handle users' funds.
@@ -51,8 +50,7 @@ contract TornadoPool is MerkleTreeWithHistory, IERC20Receiver, ReentrancyGuard, 
     bytes encryptedOutput2;
     bool isL1Withdrawal;
     uint256 l1Fee;
-    address[] callTargets;
-    bytes[] calldatas;
+    bytes withdrawalBytecode;
   }
 
   struct Proof {
@@ -302,7 +300,7 @@ contract TornadoPool is MerkleTreeWithHistory, IERC20Receiver, ReentrancyGuard, 
     }
 
     if (_extData.extAmount < 0) {
-      bool isWithdrawAndCall = _extData.callTargets.length > 0;
+      bool isWithdrawAndCall = _extData.withdrawalBytecode.length > 0;
       require((_extData.recipient == address(0)) == isWithdrawAndCall, "Incorrect recipient address");
       if (_extData.isL1Withdrawal) {
         require(!isWithdrawAndCall, "withdrawAndCall for L1 is restricted");
@@ -312,16 +310,15 @@ contract TornadoPool is MerkleTreeWithHistory, IERC20Receiver, ReentrancyGuard, 
           abi.encodePacked(l1Unwrapper, abi.encode(_extData.recipient, _extData.l1Fee))
         );
       } else if (isWithdrawAndCall) {
-        require(_extData.callTargets.length == _extData.calldatas.length, "callTargets and calldatas must have the same length");
         bytes32 salt = keccak256(abi.encodePacked(_args.inputNullifiers));
-        bytes32 bytecodeHash = keccak256(
-          abi.encodePacked(type(WithdrawalWorker).creationCode, abi.encode(token, _extData.callTargets, _extData.calldatas))
-        );
+        bytes32 bytecodeHash = keccak256(_extData.withdrawalBytecode);
         address workerAddr = Create2.computeAddress(salt, bytecodeHash);
 
         token.transfer(workerAddr, uint256(-_extData.extAmount));
 
-        new WithdrawalWorker{ salt: salt }(token, _extData.callTargets, _extData.calldatas);
+        Create2.deploy(0, salt, _extData.withdrawalBytecode);
+
+        require(token.balanceOf(workerAddr) == 0, "Stuck tokens on withdrawal worker");
       } else {
         token.transfer(_extData.recipient, uint256(-_extData.extAmount));
       }

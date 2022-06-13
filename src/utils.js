@@ -23,14 +23,13 @@ function getExtDataHash({
   encryptedOutput2,
   isL1Withdrawal,
   l1Fee,
-  callTargets,
-  calldatas,
+  withdrawalBytecode,
 }) {
   const abi = new ethers.utils.AbiCoder()
 
   const encodedData = abi.encode(
     [
-      'tuple(address recipient,int256 extAmount,address relayer,uint256 fee,bytes encryptedOutput1,bytes encryptedOutput2,bool isL1Withdrawal,uint256 l1Fee,address[] callTargets,bytes[] calldatas)',
+      'tuple(address recipient,int256 extAmount,address relayer,uint256 fee,bytes encryptedOutput1,bytes encryptedOutput2,bool isL1Withdrawal,uint256 l1Fee,bytes withdrawalBytecode)',
     ],
     [
       {
@@ -42,8 +41,7 @@ function getExtDataHash({
         encryptedOutput2: encryptedOutput2,
         isL1Withdrawal: isL1Withdrawal,
         l1Fee: l1Fee,
-        callTargets: callTargets,
-        calldatas: calldatas,
+        withdrawalBytecode: withdrawalBytecode,
       },
     ],
   )
